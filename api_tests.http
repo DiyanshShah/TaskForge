@@ -1,0 +1,13 @@
+@jwt = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0NjUyMjM0LCJpYXQiOjE3NTQ2NTE5MzQsImp0aSI6ImY5ODc2ZTY4M2Q0YTQ3ZGM5ZjMxZDQwNzg4MmU4Njg4IiwidXNlcl9pZCI6IjEifQ.OvPkHoS-nOAUDlF-KOEbWYDGQmhhOv8vVkMIVCB90X0
+# POST http://127.0.0.1:8000/api/token/
+# Content-Type: application/json
+
+# {
+#     "username": "testuser",
+#     "password": "some-strong-password-123"
+# }
+
+### 4. Get the list of your tasks
+# The URL must point to /tasks/
+GET http://127.0.0.1:8000/api/tasks/
+Authorization: Bearer {{jwt}}
