@@ -1,16 +1,23 @@
 import {useState, useEffect, useContext} from 'react'
 import AuthContext   from '../context/AuthContext'
 import apiClient from '../api'
-
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-const DashboardPage = () => {
+import EditTaskForm from '../Components/EditTaskForm';
+import ModalWrapper from '../Components/ModalWrapper';
+
+
+
+    const DashboardPage = () => {
 
     const {user, logout} = useContext(AuthContext);
     const [tasks, setTasks] = useState([]);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskDescription, setNewTaskDescription] = useState('');
     const [newTaskDueDate, setNewTaskDueDate] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [currentlyEditingTask, setCurrentlyEditingTask] = useState(null);
+
 
     const fetchTasks = async() => {
         try{
@@ -70,6 +77,38 @@ const DashboardPage = () => {
         }catch(error){
             console.error("Failed to Update Tasks: ", error);
         }
+    }
+
+    const handleDeleteTask = async (taskId) => {
+        if(window.confirm("Are you sure you want to delete this taks?")){
+            try{
+                await apiClient.delete(`api/tasks/${taskId}/`);
+                setTasks(tasks.filter((task) => {task.id !== taskId}))
+                fetchTasks();
+            }catch(error){
+                console.error("Failed to delete task: ", error);
+            }
+        }
+    };
+
+    const handleSaveTask = async (updatedTask) =>{
+        try{
+            const response = await apiClient.patch(`api/tasks/${updatedTask.id}/`, updatedTask);
+            setTasks(tasks.map((task) => task.id === updatedTask.id? response.data : task))
+            closeEditModal();
+        }catch(error){
+            console.error("Failed to save task: ", error)
+        }
+    }
+
+    const openEditModal = (task) => {
+        setCurrentlyEditingTask(task);
+        setIsModalOpen(true);
+    }
+
+    const closeEditModal = () => {
+        setCurrentlyEditingTask(null);
+        setIsModalOpen(false);
     }
 
 
@@ -149,16 +188,41 @@ const DashboardPage = () => {
                             </div>
                             <p className="text-sm text-slate-500 mt-2">{formatDate(task.due_date)}</p>
                             
-                            {/* 5. ADD BUTTONS TO UPDATE STATUS */}
+                            
                             <div className="mt-4 flex gap-2">
                                 <button onClick={() => handleUpdateStatus(task.id, 'PL')} className="text-xs py-1 px-3 bg-gray-600 hover:bg-gray-700 rounded-md">Planned</button>
                                 <button onClick={() => handleUpdateStatus(task.id, 'DG')} className="text-xs py-1 px-3 bg-yellow-600 hover:bg-yellow-700 rounded-md">Doing</button>
                                 <button onClick={() => handleUpdateStatus(task.id, 'CP')} className="text-xs py-1 px-3 bg-green-600 hover:bg-green-700 rounded-md">Completed</button>
                             </div>
+
+                             <button 
+                             onClick={() => openEditModal(task)} 
+                             className="text-xs py-1 px-3 bg-gray-600 hover:bg-gray-700 rounded-md"
+                             >
+                                Edit
+                            </button>
+
+                            <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className='text-xs py-1 px-3 bg-red-800 hover:bg-red-700 rounded-md ml-auto'
+                            >
+                                Delete
+                            </button>
                         </div>
                     ))}
                 </div>
             </main>
+
+
+            {isModalOpen && (
+                <ModalWrapper title = "Edit Task" onClose={closeEditModal}>
+                    <EditTaskForm
+                        task={currentlyEditingTask}
+                        onSave={handleSaveTask}
+                        onCancel={closeEditModal}
+                    />
+                </ModalWrapper>
+            )}
         </div>
     );
 }
