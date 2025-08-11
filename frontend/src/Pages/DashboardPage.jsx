@@ -2,12 +2,15 @@ import {useState, useEffect, useContext} from 'react'
 import AuthContext   from '../context/AuthContext'
 import apiClient from '../api'
 
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 const DashboardPage = () => {
 
     const {user, logout} = useContext(AuthContext);
     const [tasks, setTasks] = useState([]);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskDescription, setNewTaskDescription] = useState('');
+    const [newTaskDueDate, setNewTaskDueDate] = useState(null);
 
     const fetchTasks = async() => {
         try{
@@ -27,19 +30,56 @@ const DashboardPage = () => {
         if(!newTaskTitle.trim()) return;
         
         try {
-            const response = await apiClient.post('/api/tasks/',{
+
+
+            const taskData = {
                 title: newTaskTitle,
                 description: newTaskDescription,
-                status: 'PL', 
-            });
+                status: 'PL',
+            }
+
+            if(newTaskDueDate){
+                taskData.due_date = newTaskDueDate.toISOString(); 
+            }
+            const response = await apiClient.post('/api/tasks/',taskData);
 
             setTasks([...tasks, response.data]);
             setNewTaskDescription('');
             setNewTaskTitle('');
+            setNewTaskDueDate('');
         } catch (error) {
             console.error("Failed to create task: ", error);
         }
     }
+
+
+    const handleUpdateStatus = async (taskId, newStatus) => {
+
+        console.log(`Attempting to update task ID: ${taskId} to status: ${newStatus}`);
+        try{
+            const response = await apiClient.patch(`api/tasks/${taskId}/`, {
+                status: newStatus,
+            })
+
+            setTasks(
+                tasks.map((task) => (
+                    task.id === taskId?{...task, status: response.data.status}:task
+                
+                ))
+            )
+        }catch(error){
+            console.error("Failed to Update Tasks: ", error);
+        }
+    }
+
+
+    const formatDate = (dateString) => {
+        if(!dateString) return "No Due Date";
+
+        return new Date(dateString).toLocaleString('en-US', {
+            year: 'numeric', month: 'short',  day: 'numeric', hour: '2-digit', minute: '2-digit',
+        });
+    };
   return (
         <div className="container mx-auto p-4 md:p-8">
             <header className="flex justify-between items-center mb-8">
@@ -55,7 +95,8 @@ const DashboardPage = () => {
             </header>
 
             <main>
-                <form onSubmit={handleAddTask} className="mb-8 p-6 bg-slate-800 rounded-lg space-y-4">
+                <form onSubmit={handleAddTask} className="mb-12 p-6 bg-slate-800 rounded-lg space-y-4">
+                     <h2 className="text-2xl font-semibold text-white">Add a New Task</h2>
                     <input
                         type="text"
                         value={newTaskTitle}
@@ -64,14 +105,21 @@ const DashboardPage = () => {
                         required
                         className="w-full px-3 py-2 text-white bg-slate-700 border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    {/* 2. ADD TEXTAREA FOR THE DESCRIPTION */}
                     <textarea
                         value={newTaskDescription}
                         onChange={(e) => setNewTaskDescription(e.target.value)}
-                        placeholder="Add a description (optional)..."
+                        placeholder="Description (optional)..."
                         rows="3"
                         className="w-full px-3 py-2 text-white bg-slate-700 border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     ></textarea>
+                    <DatePicker
+                        selected={newTaskDueDate}
+                        onChange={(date) => setNewTaskDueDate(date)}
+                        showTimeSelect
+                        dateFormat={'MMMM d, yyyy h:mm aa'}
+                        placeholderText='Select Due Date and time'
+                        className='w-full px-3 py-2 text-white bg-slate-700 border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    />
                     <button
                         type="submit"
                         className="w-full py-2 px-4 bg-blue-600 rounded-md hover:bg-blue-700 font-semibold"
@@ -82,23 +130,36 @@ const DashboardPage = () => {
 
                 <div className="space-y-4">
                     <h2 className="text-2xl font-semibold">Your Tasks</h2>
-                    {tasks.length > 0 ? (
-                        tasks.map((task) => (
-                            <div key={task.id} className="p-4 bg-slate-800 rounded-lg shadow-md">
-                                <h3 className="font-bold text-lg">{task.title}</h3>
-                                {/* The description will now show up here */}
-                                {task.description && (
-                                    <p className="text-slate-400 mt-1">{task.description}</p>
-                                )}
+                    {tasks.map((task) => (
+                        <div key={task.id} className="p-4 bg-slate-800 rounded-lg shadow-md">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="font-bold text-lg">{task.title}</h3>
+                                    {task.description && (
+                                        <p className="text-slate-400 mt-1">{task.description}</p>
+                                    )}
+                                </div>
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                    task.status === 'CP' ? 'bg-green-500 text-green-900' :
+                                    task.status === 'DG' ? 'bg-yellow-500 text-yellow-900' :
+                                    'bg-gray-500 text-gray-900'
+                                }`}>
+                                    {task.status === 'PL' ? 'Planned' : task.status === 'DG' ? 'Doing' : 'Completed'}
+                                </span>
                             </div>
-                        ))
-                    ) : (
-                        <p className="text-slate-400">You have no tasks yet. Add one above!</p>
-                    )}
+                            <p className="text-sm text-slate-500 mt-2">{formatDate(task.due_date)}</p>
+                            
+                            {/* 5. ADD BUTTONS TO UPDATE STATUS */}
+                            <div className="mt-4 flex gap-2">
+                                <button onClick={() => handleUpdateStatus(task.id, 'PL')} className="text-xs py-1 px-3 bg-gray-600 hover:bg-gray-700 rounded-md">Planned</button>
+                                <button onClick={() => handleUpdateStatus(task.id, 'DG')} className="text-xs py-1 px-3 bg-yellow-600 hover:bg-yellow-700 rounded-md">Doing</button>
+                                <button onClick={() => handleUpdateStatus(task.id, 'CP')} className="text-xs py-1 px-3 bg-green-600 hover:bg-green-700 rounded-md">Completed</button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </main>
         </div>
     );
 }
-
-export default DashboardPage
+export default DashboardPage;

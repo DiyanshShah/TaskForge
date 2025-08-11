@@ -20,10 +20,12 @@ export const AuthProvider = ({ children }) => {
             const url = `${import.meta.env.VITE_API_BASE_URL}/api/token/`
             const response = await axios.post(url, {username, password});
             const accessToken = response.data.access;
+            const refereshToken = response.data.refresh;
 
             setToken(accessToken);
             setUser(jwtDecode(accessToken));
             localStorage.setItem('authToken', accessToken);
+            localStorage.setItem('refreshToken', refereshToken);
 
             navigate('/');
         }catch(error){
@@ -38,6 +40,7 @@ export const AuthProvider = ({ children }) => {
         setToken(null);
         setUser(null);
         localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
         navigate('/login');
     };
 
