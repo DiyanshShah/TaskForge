@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
-from rest_framework import generics, viewsets
+from rest_framework import generics, viewsets, filters
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Task
 from .serializers import TaskSerializer, UserSerializer
@@ -13,6 +14,9 @@ class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
 
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['status']
+    ordering_fields = ['due_date', 'created_at']
 
     def get_queryset(self):
         return Task.objects.filter(user=self.request.user)
