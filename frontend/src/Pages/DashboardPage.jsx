@@ -17,11 +17,20 @@ import ModalWrapper from '../Components/ModalWrapper';
     const [newTaskDueDate, setNewTaskDueDate] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentlyEditingTask, setCurrentlyEditingTask] = useState(null);
+    const [statusFilter, setStatusFilter] = useState('');
+    const [orderingFilter, setOrderingFilter] = useState('');
 
 
     const fetchTasks = async() => {
         try{
-            const response = await apiClient.get('/api/tasks/');
+            const params = new URLSearchParams();
+            if(statusFilter){
+                params.append('status', statusFilter);
+            }
+            if(orderingFilter){
+                params.append('ordering', orderingFilter);
+            }
+            const response = await apiClient.get('/api/tasks/', {params});
             setTasks(response.data);
         }catch(error){
             console.error("Failed to fetch tasks: ", error);
@@ -30,7 +39,7 @@ import ModalWrapper from '../Components/ModalWrapper';
 
     useEffect(() => {
         fetchTasks();
-    }, []);
+    }, [statusFilter, orderingFilter]);
 
     const handleAddTask = async (e) => {
         e.preventDefault();
@@ -49,8 +58,9 @@ import ModalWrapper from '../Components/ModalWrapper';
                 taskData.due_date = newTaskDueDate.toISOString(); 
             }
             const response = await apiClient.post('/api/tasks/',taskData);
+            fetchTasks();
 
-            setTasks([...tasks, response.data]);
+            // setTasks([...tasks, response.data]);
             setNewTaskDescription('');
             setNewTaskTitle('');
             setNewTaskDueDate('');
@@ -67,6 +77,7 @@ import ModalWrapper from '../Components/ModalWrapper';
             const response = await apiClient.patch(`api/tasks/${taskId}/`, {
                 status: newStatus,
             })
+            fetchTasks();
 
             setTasks(
                 tasks.map((task) => (
@@ -95,6 +106,7 @@ import ModalWrapper from '../Components/ModalWrapper';
         try{
             const response = await apiClient.patch(`api/tasks/${updatedTask.id}/`, updatedTask);
             setTasks(tasks.map((task) => task.id === updatedTask.id? response.data : task))
+            fetchTasks();
             closeEditModal();
         }catch(error){
             console.error("Failed to save task: ", error)
@@ -169,6 +181,41 @@ import ModalWrapper from '../Components/ModalWrapper';
 
                 <div className="space-y-4">
                     <h2 className="text-2xl font-semibold">Your Tasks</h2>
+
+                    <div className="mt-4 p-4 bg-slate-800 rounded-lg flex flex-col sm:flex-row gap-4">
+                    {/* Status Filter */}
+                    <div className="flex-1">
+                        <label htmlFor="status-filter" className="block text-sm font-medium text-gray-300">Filter by Status</label>
+                        <select
+                            id="status-filter"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full mt-1 px-3 py-2 text-white bg-slate-700 border border-slate-600 rounded-md"
+                        >
+                            <option value="">All</option>
+                            <option value="PL">Planned</option>
+                            <option value="DG">Doing</option>
+                            <option value="CP">Completed</option>
+                        </select>
+                    </div>
+                    {/* Ordering/Sort Filter */}
+                    <div className="flex-1">
+                        <label htmlFor="ordering-filter" className="block text-sm font-medium text-gray-300">Sort by</label>
+                        <select
+                            id="ordering-filter"
+                            value={orderingFilter}
+                            onChange={(e) => setOrderingFilter(e.target.value)}
+                            className="w-full mt-1 px-3 py-2 text-white bg-slate-700 border border-slate-600 rounded-md"
+                        >
+                            <option value="">Default</option>
+                            <option value="due_date">Due Date (Ascending)</option>
+                            <option value="-due_date">Due Date (Descending)</option>
+                            <option value="created_at">Creation Date (Oldest First)</option>
+                            <option value="-created_at">Creation Date (Newest First)</option>
+                        </select>
+                    </div>
+                </div>
+
                     {tasks.map((task) => (
                         <div key={task.id} className="p-4 bg-slate-800 rounded-lg shadow-md">
                             <div className="flex justify-between items-start">
